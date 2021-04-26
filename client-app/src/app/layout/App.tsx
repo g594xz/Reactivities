@@ -1,48 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { Container } from 'semantic-ui-react';
+import {  Container } from 'semantic-ui-react';
 import { Activity } from '../models/activity';
 import NavBar from './NavBar';
 import ActivityDashboard from '../../features/activities/dashboard/ActivityDashboard';
 import {v4 as uuid} from 'uuid'
 import agent from '../api/agent';
 import LoadingComponent from './LoadingComponent';
+import { useStore } from '../stores/store';
+import { observer } from 'mobx-react-lite';
 
 function App() {
+
+  const {activityStore} = useStore()
 
   const[activities, setAvtivities] = useState<Activity[]>([])
   const [selectedActivity, setSelectedActivity] = useState<Activity | undefined>(undefined)
   const [editMode, seteditMode] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    agent.Activities.list().then((response) => {
-      let activities: Activity[] = []
-      response.forEach(activity => {
-        activity.date = activity.date.split('T')[0]
-        activities.push(activity)
-      })
-      setAvtivities(activities)
-      setLoading(false)
-    })
-  },[])
+    activityStore.loadActivities()
+  },[activityStore])
 
-  const handleSelectActivity = (id: string) => {
-    setSelectedActivity(activities.find(x=> x.id === id));
-  }
-
-  const handleCancelSelectActivity = () => {
-    setSelectedActivity(undefined)
-  }
-
-  const handleFormOpen = (id?: string) => {
-    id ? handleSelectActivity(id) : handleCancelSelectActivity()
-    seteditMode(true)
-  }
   
-  const handleFormClose = () => {
-    seteditMode(false)
-  }
   
   const handleCreateOrEditActivity = (activity: Activity) => {
       setSubmitting(true)
@@ -73,20 +53,15 @@ function App() {
     
   }
   
-  if(loading) return <LoadingComponent content='Loading app' />
+  if(activityStore.loadingInitial) return <LoadingComponent content='Loading app' />
 
   return (
     <>
-      <NavBar openForm={handleFormOpen}/>
+      <NavBar/>
       <Container style={{marginTop: '7em'}}>
+        
         <ActivityDashboard 
-          activities={activities}
-          selectedActivity={selectedActivity}
-          selectActivity={handleSelectActivity}
-          cancelSelectActivity={handleCancelSelectActivity}
-          editMode={editMode}
-          openForm={handleFormOpen}
-          closeForm={handleFormClose}
+          activities={activityStore.activities}
           createOrEdit={handleCreateOrEditActivity}
           deleteActivity={handleDeleteActivity}
           submitting={submitting}
@@ -97,4 +72,4 @@ function App() {
   );
 }
 
-export default App;
+export default observer(App);
