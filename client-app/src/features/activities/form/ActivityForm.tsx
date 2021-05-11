@@ -1,12 +1,17 @@
 import { observer } from 'mobx-react-lite'
-import React, { ChangeEvent, useState } from 'react'
+import React, { ChangeEvent, useEffect, useState } from 'react'
+import { useHistory, useParams } from 'react-router'
 import { Button, Form, Segment } from 'semantic-ui-react'
+import LoadingComponent from '../../../app/layout/LoadingComponent'
 import { useStore } from '../../../app/stores/store'
+import {v4 as uuid} from 'uuid'
+import { Link } from 'react-router-dom'
 
 export default observer(function ActivityForm() {
-    const {activityStore: {selectedActivity, closeForm, createActivity, updateActivity, loading}} = useStore()
-
-    const initialState = selectedActivity ?? {
+    const history = useHistory()
+    const {activityStore: { createActivity, updateActivity, loading, loadActivity, loadingInitial}} = useStore()
+    const {id} = useParams<{id: string}>()
+    const [activityObj, setActivityObj] = useState({
         id: '',
         title: '',
         category: '',
@@ -14,12 +19,25 @@ export default observer(function ActivityForm() {
         date: '',
         city: '',
         venue: '',
-    }
-
-    const [activityObj, setActivityObj] = useState(initialState)
+    })
+    
+    useEffect(() => {
+        if(id) loadActivity(id).then( activity => setActivityObj(activity!))
+    }, [id, loadActivity])
+    
 
     const handleSubmit = () => {
-        activityObj.id ? updateActivity(activityObj) : createActivity(activityObj)
+        if (activityObj.id.length === 0) {
+            let newActivity = {
+                ...activityObj,
+                id: uuid()
+            }
+            createActivity(newActivity).then(() => history.push(`/activities/${newActivity.id}`))
+        } else {
+            updateActivity(activityObj).then(() => {
+                history.push(`/activities/${activityObj.id}`)
+            })
+        }
     }
 
     const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -27,7 +45,7 @@ export default observer(function ActivityForm() {
         setActivityObj({...activityObj, [name]: value})
     }
     
-    
+    if(loadingInitial) return <LoadingComponent content='Loading activity...' />
 
     return (
         <Segment clearing>
@@ -39,7 +57,7 @@ export default observer(function ActivityForm() {
                 <Form.Input placeholder='City' value={activityObj.city} name='city' onChange={handleInputChange}/>
                 <Form.Input placeholder='Venue' value={activityObj.venue} name='venue' onChange={handleInputChange}/>
                 <Button loading={loading} floated='right' positive type='submit' content='Submit' />
-                <Button  onClick={closeForm} floated='right' positive type='button' content='Cancel' />
+                <Button as={Link} to='/activities' floated='right'  type='button' content='Cancel' />
             </Form>
         </Segment>
     )
